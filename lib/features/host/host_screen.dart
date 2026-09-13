@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/routes.dart';
 import '../../models/connection_state.dart';
 import '../../state/connection_controller.dart';
+import '../../state/playback_controller.dart';
 import '../room/widgets/room_code_card.dart';
 import '../room/widgets/room_playback_controls.dart';
 
@@ -17,16 +18,24 @@ class HostScreen extends StatefulWidget {
 
 class _HostScreenState extends State<HostScreen> {
   late final ConnectionController _connection;
+  late final PlaybackController _playback;
+  late final TextEditingController _audioPathController;
 
   @override
   void initState() {
     super.initState();
     _connection = ConnectionController()..addListener(_refresh);
+    _playback = PlaybackController()..addListener(_refresh);
+    _audioPathController = TextEditingController();
     _connection.startHost(widget.room);
   }
 
   @override
   void dispose() {
+    _audioPathController.dispose();
+    _playback
+      ..removeListener(_refresh)
+      ..dispose();
     _connection
       ..removeListener(_refresh)
       ..dispose();
@@ -124,7 +133,34 @@ class _HostScreenState extends State<HostScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const RoomPlaybackControls(enabled: false),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Local Audio', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _audioPathController,
+                    decoration: const InputDecoration(
+                      labelText: 'Audio file path',
+                      hintText: '/storage/emulated/0/Music/song.mp3',
+                      prefixIcon: Icon(Icons.audio_file_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: () => _playback.loadFile(_audioPathController.text),
+                    icon: const Icon(Icons.file_open_outlined),
+                    label: const Text('Load Audio'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          RoomPlaybackControls(enabled: true, controller: _playback),
         ],
       ),
     );
