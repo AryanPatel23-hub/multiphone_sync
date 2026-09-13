@@ -11,11 +11,15 @@ class RoomRouteArguments {
     required this.roomName,
     required this.roomCode,
     this.deviceLimit = 5,
+    this.hostAddress = '127.0.0.1',
+    this.port = 4040,
   });
 
   final String roomName;
   final String roomCode;
   final int deviceLimit;
+  final String hostAddress;
+  final int port;
 }
 
 abstract final class AppRoutes {

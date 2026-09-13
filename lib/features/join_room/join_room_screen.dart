@@ -11,11 +11,13 @@ class JoinRoomScreen extends StatefulWidget {
 
 class _JoinRoomScreenState extends State<JoinRoomScreen> {
   final _codeController = TextEditingController();
+  final _hostAddressController = TextEditingController(text: '127.0.0.1');
   String? _errorText;
 
   @override
   void dispose() {
     _codeController.dispose();
+    _hostAddressController.dispose();
     super.dispose();
   }
 
@@ -55,6 +57,16 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                       }
                     },
                   ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _hostAddressController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Host Address',
+                      hintText: '192.168.1.10',
+                      prefixIcon: Icon(Icons.computer_outlined),
+                    ),
+                  ),
                   if (_errorText != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -74,6 +86,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                           arguments: RoomRouteArguments(
                             roomName: 'Party Room',
                             roomCode: _codeController.text,
+                            hostAddress: _hostAddressController.text.trim(),
                           ),
                         );
                       } else {
