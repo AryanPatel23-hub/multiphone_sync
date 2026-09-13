@@ -5,7 +5,7 @@ class AudioMetadata {
     required this.format,
     required this.size,
     required this.checksum,
-    required this.localPath,
+    this.localPath = '',
     this.duration,
   });
 
