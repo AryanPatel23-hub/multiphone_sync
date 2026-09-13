@@ -52,7 +52,8 @@ class RoomPlaybackControls extends StatelessWidget {
               value: value,
               max: maxMilliseconds == 0 ? 1 : maxMilliseconds,
               onChanged: enabled && playback != null && duration > Duration.zero
-                  ? (next) => playback.seek(Duration(milliseconds: next.round()))
+                  ? (next) =>
+                        playback.seek(Duration(milliseconds: next.round()))
                   : null,
             ),
             Row(
@@ -65,7 +66,9 @@ class RoomPlaybackControls extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: enabled && playback != null
-                      ? () => playback.seek(position - const Duration(seconds: 10))
+                      ? () => playback.seek(
+                          position - const Duration(seconds: 10),
+                        )
                       : null,
                   tooltip: 'Back 10 seconds',
                   icon: const Icon(Icons.replay_10_outlined),
@@ -76,12 +79,16 @@ class RoomPlaybackControls extends StatelessWidget {
                       : null,
                   tooltip: isPlaying ? 'Pause' : 'Play',
                   icon: Icon(
-                    isPlaying ? Icons.pause_outlined : Icons.play_arrow_outlined,
+                    isPlaying
+                        ? Icons.pause_outlined
+                        : Icons.play_arrow_outlined,
                   ),
                 ),
                 IconButton(
                   onPressed: enabled && playback != null
-                      ? () => playback.seek(position + const Duration(seconds: 10))
+                      ? () => playback.seek(
+                          position + const Duration(seconds: 10),
+                        )
                       : null,
                   tooltip: 'Forward 10 seconds',
                   icon: const Icon(Icons.forward_10_outlined),
@@ -106,7 +113,8 @@ class RoomPlaybackControls extends StatelessWidget {
                 ),
               ],
             ),
-            if (status == PlaybackStatus.loading) const LinearProgressIndicator(),
+            if (status == PlaybackStatus.loading)
+              const LinearProgressIndicator(),
             if (playback?.errorMessage != null)
               Text(
                 playback!.errorMessage!,

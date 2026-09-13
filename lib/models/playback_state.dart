@@ -1,12 +1,4 @@
-enum PlaybackStatus {
-  idle,
-  loading,
-  ready,
-  playing,
-  paused,
-  stopped,
-  error,
-}
+enum PlaybackStatus { idle, loading, ready, playing, paused, stopped, error }
 
 class PlaybackSnapshot {
   const PlaybackSnapshot({

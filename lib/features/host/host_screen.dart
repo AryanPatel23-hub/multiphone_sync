@@ -139,7 +139,10 @@ class _HostScreenState extends State<HostScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Local Audio', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'Local Audio',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _audioPathController,
@@ -151,7 +154,8 @@ class _HostScreenState extends State<HostScreen> {
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
-                    onPressed: () => _playback.loadFile(_audioPathController.text),
+                    onPressed: () =>
+                        _playback.loadFile(_audioPathController.text),
                     icon: const Icon(Icons.file_open_outlined),
                     label: const Text('Load Audio'),
                   ),
