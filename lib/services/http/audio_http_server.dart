@@ -23,10 +23,7 @@ class AudioHttpServer {
     _server!.listen(_handleRequest);
   }
 
-  Future<AudioMetadata> registerFile(
-    String path, {
-    Duration? duration,
-  }) async {
+  Future<AudioMetadata> registerFile(String path, {Duration? duration}) async {
     final file = File(path.trim());
     if (!await file.exists()) {
       throw const FileSystemException('Audio file does not exist.');
@@ -59,7 +56,9 @@ class AudioHttpServer {
 
   Future<void> _handleRequest(HttpRequest request) async {
     final segments = request.uri.pathSegments;
-    if (request.method != 'GET' || segments.length != 2 || segments.first != 'audio') {
+    if (request.method != 'GET' ||
+        segments.length != 2 ||
+        segments.first != 'audio') {
       await _respond(request, HttpStatus.notFound, 'Not found');
       return;
     }

@@ -23,7 +23,7 @@ class _ApplicationErrorWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Material(
       child: Center(
-        child: Padding(
+        child: Padding( 
           padding: EdgeInsets.all(24),
           child: Text('Something went wrong. Please restart the app.'),
         ),

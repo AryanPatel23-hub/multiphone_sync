@@ -39,7 +39,7 @@ class AudioServerController extends ChangeNotifier {
       if (status != AudioServerStatus.ready) await start();
       if (status != AudioServerStatus.ready) return;
       metadata = await _server.registerFile(path, duration: duration);
-        endpoint =
+      endpoint =
           'http://${await _findHostAddress()}:${_server.boundPort}/audio/${metadata!.audioId}';
       errorMessage = null;
     } on FileSystemException catch (error) {
