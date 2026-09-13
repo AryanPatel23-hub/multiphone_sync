@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/routes.dart';
 import '../../models/connection_state.dart';
+import '../../state/audio_server_controller.dart';
 import '../../state/connection_controller.dart';
 import '../../state/playback_controller.dart';
 import '../room/widgets/room_code_card.dart';
@@ -18,6 +19,7 @@ class HostScreen extends StatefulWidget {
 
 class _HostScreenState extends State<HostScreen> {
   late final ConnectionController _connection;
+  late final AudioServerController _audioServer;
   late final PlaybackController _playback;
   late final TextEditingController _audioPathController;
 
@@ -25,6 +27,7 @@ class _HostScreenState extends State<HostScreen> {
   void initState() {
     super.initState();
     _connection = ConnectionController()..addListener(_refresh);
+    _audioServer = AudioServerController()..addListener(_refresh);
     _playback = PlaybackController()..addListener(_refresh);
     _audioPathController = TextEditingController();
     _connection.startHost(widget.room);
@@ -34,6 +37,9 @@ class _HostScreenState extends State<HostScreen> {
   void dispose() {
     _audioPathController.dispose();
     _playback
+      ..removeListener(_refresh)
+      ..dispose();
+    _audioServer
       ..removeListener(_refresh)
       ..dispose();
     _connection
@@ -159,7 +165,31 @@ class _HostScreenState extends State<HostScreen> {
                     icon: const Icon(Icons.file_open_outlined),
                     label: const Text('Load Audio'),
                   ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _exposeAudio(),
+                    icon: const Icon(Icons.http_outlined),
+                    label: const Text('Expose Audio on Local Network'),
+                  ),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _audioServer.status == AudioServerStatus.ready
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined,
+                color: _audioServer.status == AudioServerStatus.ready
+                    ? Theme.of(context).colorScheme.tertiary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              title: const Text('Local Audio Server'),
+              subtitle: Text(
+                _audioServer.errorMessage ??
+                    (_audioServer.endpoint ?? 'No audio exposed yet.'),
               ),
             ),
           ),
@@ -172,5 +202,10 @@ class _HostScreenState extends State<HostScreen> {
 
   void _refresh() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _exposeAudio() async {
+    final path = _audioPathController.text.trim();
+    await _audioServer.exposeFile(path, duration: _playback.duration);
   }
 }
