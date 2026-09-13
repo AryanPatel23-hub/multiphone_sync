@@ -21,10 +21,7 @@ class ChecksumVerificationResult {
 }
 
 abstract interface class ChecksumService {
-  Future<ChecksumVerificationResult> verify(
-    File file,
-    AudioMetadata metadata,
-  );
+  Future<ChecksumVerificationResult> verify(File file, AudioMetadata metadata);
 }
 
 class Sha256ChecksumService implements ChecksumService {
@@ -37,11 +34,12 @@ class Sha256ChecksumService implements ChecksumService {
       throw const FormatException('Audio checksum metadata is required.');
     }
     final actualSize = await file.length();
-    final actualChecksum = (await sha256.bind(file.openRead()).first).toString();
+    final actualChecksum = (await sha256.bind(file.openRead()).first)
+        .toString();
     return ChecksumVerificationResult(
       sizeMatches: actualSize == metadata.size,
-      checksumMatches: actualChecksum.toLowerCase() ==
-          metadata.checksum.toLowerCase(),
+      checksumMatches:
+          actualChecksum.toLowerCase() == metadata.checksum.toLowerCase(),
       actualSize: actualSize,
       actualChecksum: actualChecksum,
     );

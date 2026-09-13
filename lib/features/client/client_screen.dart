@@ -180,12 +180,13 @@ class _ClientScreenState extends State<ClientScreen> {
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
-                    onPressed: _transfer.snapshot.status ==
-                          TransferStatus.downloading ||
+                    onPressed:
                         _transfer.snapshot.status ==
-                          TransferStatus.verifying
-                      ? null
-                      : _downloadAudio,
+                                TransferStatus.downloading ||
+                            _transfer.snapshot.status ==
+                                TransferStatus.verifying
+                        ? null
+                        : _downloadAudio,
                     icon: const Icon(Icons.download_outlined),
                     label: const Text('Download Audio'),
                   ),
