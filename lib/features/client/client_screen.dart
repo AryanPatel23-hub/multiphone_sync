@@ -87,9 +87,7 @@ class _ClientScreenState extends State<ClientScreen> {
               children: [
                 ListTile(
                   leading: Icon(
-                    isConnected
-                        ? Icons.link_outlined
-                        : Icons.link_off_outlined,
+                    isConnected ? Icons.link_outlined : Icons.link_off_outlined,
                     color: isConnected
                         ? Theme.of(context).colorScheme.tertiary
                         : Theme.of(context).colorScheme.error,

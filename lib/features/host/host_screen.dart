@@ -106,7 +106,9 @@ class _HostScreenState extends State<HostScreen> {
                       : _connection.devices
                             .map(
                               (device) => ListTile(
-                                leading: const Icon(Icons.phone_android_outlined),
+                                leading: const Icon(
+                                  Icons.phone_android_outlined,
+                                ),
                                 title: Text(device.deviceName),
                                 subtitle: const Text('Connected'),
                                 trailing: Icon(

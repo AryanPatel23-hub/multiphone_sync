@@ -41,12 +41,14 @@ class WebSocketServer {
     });
 
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _broadcast(const WebSocketMessage(
-        type: 'HEARTBEAT',
-        messageId: 'server-heartbeat',
-        timestamp: 1,
-        payload: {},
-      ));
+      _broadcast(
+        const WebSocketMessage(
+          type: 'HEARTBEAT',
+          messageId: 'server-heartbeat',
+          timestamp: 1,
+          payload: {},
+        ),
+      );
     });
   }
 
@@ -73,12 +75,14 @@ class WebSocketServer {
       final message = WebSocketMessage.decode(data);
       if (message.type == 'JOIN_ROOM' &&
           message.payload['roomCode'] != roomCode) {
-        socket.add(const WebSocketMessage(
-          type: 'ERROR',
-          messageId: 'invalid-room',
-          timestamp: 1,
-          payload: {'code': 'INVALID_ROOM', 'message': 'Invalid room code.'},
-        ).encode());
+        socket.add(
+          const WebSocketMessage(
+            type: 'ERROR',
+            messageId: 'invalid-room',
+            timestamp: 1,
+            payload: {'code': 'INVALID_ROOM', 'message': 'Invalid room code.'},
+          ).encode(),
+        );
         socket.close(WebSocketStatus.policyViolation, 'Invalid room code');
         return;
       }
@@ -88,12 +92,14 @@ class WebSocketServer {
       }
       socket.add(_roomStateMessage().encode());
     } on FormatException catch (error) {
-      socket.add(WebSocketMessage(
-        type: 'ERROR',
-        messageId: 'malformed-message',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        payload: {'code': 'MALFORMED_MESSAGE', 'message': error.message},
-      ).encode());
+      socket.add(
+        WebSocketMessage(
+          type: 'ERROR',
+          messageId: 'malformed-message',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+          payload: {'code': 'MALFORMED_MESSAGE', 'message': error.message},
+        ).encode(),
+      );
     } catch (error, stackTrace) {
       AppLogger.error('WebSocket message handling failed', error, stackTrace);
     }

@@ -27,58 +27,63 @@ void main() {
       throwsFormatException,
     );
     expect(
-      () => WebSocketMessage.decode('{"version":1,"type":"UNKNOWN",'
-          '"messageId":"1","timestamp":1,"payload":{}}'),
+      () => WebSocketMessage.decode(
+        '{"version":1,"type":"UNKNOWN",'
+        '"messageId":"1","timestamp":1,"payload":{}}',
+      ),
       throwsFormatException,
     );
   });
 
-  test('connects a client, validates room code, and exchanges room state', () async {
-    final server = WebSocketServer(port: 0);
-    final client = WebSocketClient();
-    final roomState = Completer<WebSocketMessage>();
-    final joinEvent = Completer<WebSocketMessage>();
+  test(
+    'connects a client, validates room code, and exchanges room state',
+    () async {
+      final server = WebSocketServer(port: 0);
+      final client = WebSocketClient();
+      final roomState = Completer<WebSocketMessage>();
+      final joinEvent = Completer<WebSocketMessage>();
 
-    final serverSubscription = server.events.stream.listen((message) {
-      if (!joinEvent.isCompleted) joinEvent.complete(message);
-    });
-    final clientSubscription = client.messages.stream.listen((message) {
-      if (message.type == 'ROOM_STATE' && !roomState.isCompleted) {
-        roomState.complete(message);
-      }
-    });
+      final serverSubscription = server.events.stream.listen((message) {
+        if (!joinEvent.isCompleted) joinEvent.complete(message);
+      });
+      final clientSubscription = client.messages.stream.listen((message) {
+        if (message.type == 'ROOM_STATE' && !roomState.isCompleted) {
+          roomState.complete(message);
+        }
+      });
 
-    await server.start(roomCode: '4827');
-    await client.connect(
-      host: '127.0.0.1',
-      port: server.boundPort,
-      connectMessage: _message('CONNECT', {
-        'deviceId': 'device-1',
-        'deviceName': 'Test Client',
-        'role': 'client',
-      }),
-      joinMessage: _message('JOIN_ROOM', {
-        'roomCode': '4827',
-        'deviceId': 'device-1',
-        'deviceName': 'Test Client',
-      }),
-    );
+      await server.start(roomCode: '4827');
+      await client.connect(
+        host: '127.0.0.1',
+        port: server.boundPort,
+        connectMessage: _message('CONNECT', {
+          'deviceId': 'device-1',
+          'deviceName': 'Test Client',
+          'role': 'client',
+        }),
+        joinMessage: _message('JOIN_ROOM', {
+          'roomCode': '4827',
+          'deviceId': 'device-1',
+          'deviceName': 'Test Client',
+        }),
+      );
 
-    final receivedRoomState = await roomState.future.timeout(
-      const Duration(seconds: 2),
-    );
-    final receivedJoin = await joinEvent.future.timeout(
-      const Duration(seconds: 2),
-    );
+      final receivedRoomState = await roomState.future.timeout(
+        const Duration(seconds: 2),
+      );
+      final receivedJoin = await joinEvent.future.timeout(
+        const Duration(seconds: 2),
+      );
 
-    expect(receivedRoomState.type, 'ROOM_STATE');
-    expect(receivedJoin.payload['roomCode'], '4827');
+      expect(receivedRoomState.type, 'ROOM_STATE');
+      expect(receivedJoin.payload['roomCode'], '4827');
 
-    await clientSubscription.cancel();
-    await serverSubscription.cancel();
-    await client.dispose();
-    await server.dispose();
-  });
+      await clientSubscription.cancel();
+      await serverSubscription.cancel();
+      await client.dispose();
+      await server.dispose();
+    },
+  );
 }
 
 WebSocketMessage _message(String type, Map<String, dynamic> payload) {
