@@ -1,9 +1,4 @@
-enum TransferStatus {
-  idle,
-  downloading,
-  failed,
-  completed,
-}
+enum TransferStatus { idle, downloading, verifying, failed, completed }
 
 class TransferSnapshot {
   const TransferSnapshot({
@@ -20,7 +15,6 @@ class TransferSnapshot {
   final String? errorMessage;
   final String? temporaryPath;
 
-  double get progress => totalBytes <= 0
-      ? 0
-      : (bytesReceived / totalBytes).clamp(0.0, 1.0);
+  double get progress =>
+      totalBytes <= 0 ? 0 : (bytesReceived / totalBytes).clamp(0.0, 1.0);
 }

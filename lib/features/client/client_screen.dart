@@ -24,6 +24,7 @@ class _ClientScreenState extends State<ClientScreen> {
   late final TextEditingController _hostAddressController;
   late final TextEditingController _audioUrlController;
   late final TextEditingController _audioSizeController;
+  late final TextEditingController _audioChecksumController;
 
   @override
   void initState() {
@@ -35,6 +36,7 @@ class _ClientScreenState extends State<ClientScreen> {
     );
     _audioUrlController = TextEditingController();
     _audioSizeController = TextEditingController();
+    _audioChecksumController = TextEditingController();
   }
 
   @override
@@ -42,6 +44,7 @@ class _ClientScreenState extends State<ClientScreen> {
     _hostAddressController.dispose();
     _audioUrlController.dispose();
     _audioSizeController.dispose();
+    _audioChecksumController.dispose();
     _transfer
       ..removeListener(_refresh)
       ..dispose();
@@ -168,14 +171,26 @@ class _ClientScreenState extends State<ClientScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  TextField(
+                    controller: _audioChecksumController,
+                    decoration: const InputDecoration(
+                      labelText: 'Expected SHA-256 checksum',
+                      prefixIcon: Icon(Icons.fingerprint_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   FilledButton.icon(
-                    onPressed: _transfer.snapshot.status == TransferStatus.downloading
-                        ? null
-                        : _downloadAudio,
+                    onPressed: _transfer.snapshot.status ==
+                          TransferStatus.downloading ||
+                        _transfer.snapshot.status ==
+                          TransferStatus.verifying
+                      ? null
+                      : _downloadAudio,
                     icon: const Icon(Icons.download_outlined),
                     label: const Text('Download Audio'),
                   ),
-                  if (_transfer.snapshot.status == TransferStatus.downloading) ...[
+                  if (_transfer.snapshot.status ==
+                      TransferStatus.downloading) ...[
                     const SizedBox(height: 12),
                     LinearProgressIndicator(value: _transfer.snapshot.progress),
                     const SizedBox(height: 6),
@@ -184,17 +199,37 @@ class _ClientScreenState extends State<ClientScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ],
+                  if (_transfer.snapshot.status == TransferStatus.verifying)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text('Verifying audio...'),
+                        ],
+                      ),
+                    ),
                   if (_transfer.snapshot.status == TransferStatus.completed)
                     const Padding(
                       padding: EdgeInsets.only(top: 12),
-                      child: Text('Downloaded to a temporary file; verification is pending.'),
+                      child: Text(
+                        'Audio verified; cache promotion is pending.',
+                      ),
                     ),
                   if (_transfer.snapshot.errorMessage != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         _transfer.snapshot.errorMessage!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
                 ],
@@ -231,7 +266,7 @@ class _ClientScreenState extends State<ClientScreen> {
         fileName: 'download.mp3',
         format: 'mp3',
         size: size,
-        checksum: '',
+        checksum: _audioChecksumController.text.trim(),
       ),
     );
   }

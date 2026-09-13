@@ -9,9 +9,8 @@ class AudioTransferProgress {
   final int bytesReceived;
   final int totalBytes;
 
-  double get progress => totalBytes <= 0
-      ? 0
-      : (bytesReceived / totalBytes).clamp(0.0, 1.0);
+  double get progress =>
+      totalBytes <= 0 ? 0 : (bytesReceived / totalBytes).clamp(0.0, 1.0);
 }
 
 abstract interface class AudioTransferService {
@@ -33,10 +32,12 @@ class LocalAudioTransferService implements AudioTransferService {
 
   final HttpClient _client;
   final Directory _temporaryDirectory;
-  final _progressController = StreamController<AudioTransferProgress>.broadcast();
+  final _progressController =
+      StreamController<AudioTransferProgress>.broadcast();
 
   @override
-  Stream<AudioTransferProgress> get progressStream => _progressController.stream;
+  Stream<AudioTransferProgress> get progressStream =>
+      _progressController.stream;
 
   @override
   Future<String> download(
@@ -45,7 +46,11 @@ class LocalAudioTransferService implements AudioTransferService {
     int maxAttempts = 3,
   }) async {
     if (maxAttempts < 1) {
-      throw ArgumentError.value(maxAttempts, 'maxAttempts', 'Must be at least 1.');
+      throw ArgumentError.value(
+        maxAttempts,
+        'maxAttempts',
+        'Must be at least 1.',
+      );
     }
     if (metadata.audioId.isEmpty || metadata.size < 0) {
       throw const FormatException('Audio metadata is invalid.');
