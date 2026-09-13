@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../core/logging/app_logger.dart';
 import '../models/audio.dart';
 import '../models/transfer_state.dart';
+import '../services/cache/audio_cache_service.dart';
 import '../services/transfer/audio_transfer_service.dart';
 import '../services/transfer/checksum_service.dart';
 
@@ -13,8 +14,10 @@ class TransferController extends ChangeNotifier {
   TransferController({
     AudioTransferService? transferService,
     ChecksumService? checksumService,
+    AudioCacheService? cacheService,
   }) : _transferService = transferService ?? LocalAudioTransferService(),
-       _checksumService = checksumService ?? Sha256ChecksumService() {
+       _checksumService = checksumService ?? Sha256ChecksumService(),
+       _cacheService = cacheService ?? LocalAudioCacheService() {
     _progressSubscription = _transferService.progressStream.listen((progress) {
       snapshot = TransferSnapshot(
         status: TransferStatus.downloading,
@@ -28,6 +31,7 @@ class TransferController extends ChangeNotifier {
 
   final AudioTransferService _transferService;
   final ChecksumService _checksumService;
+  final AudioCacheService _cacheService;
   late final StreamSubscription<AudioTransferProgress> _progressSubscription;
   TransferSnapshot snapshot = const TransferSnapshot(
     status: TransferStatus.idle,
@@ -36,6 +40,18 @@ class TransferController extends ChangeNotifier {
   );
 
   Future<void> download(Uri source, AudioMetadata metadata) async {
+    final cached = await _cacheService.findValid(metadata.audioId);
+    if (cached != null) {
+      snapshot = TransferSnapshot(
+        status: TransferStatus.completed,
+        bytesReceived: cached.size,
+        totalBytes: cached.size,
+        temporaryPath: cached.localPath,
+      );
+      notifyListeners();
+      return;
+    }
+
     snapshot = TransferSnapshot(
       status: TransferStatus.downloading,
       bytesReceived: 0,
@@ -59,11 +75,16 @@ class TransferController extends ChangeNotifier {
         await _deleteTemporaryFile(temporaryPath);
         throw const FormatException('Downloaded audio failed verification.');
       }
+      final cached = await _cacheService.storeVerified(
+        File(temporaryPath),
+        metadata,
+      );
+      await _deleteTemporaryFile(temporaryPath);
       snapshot = TransferSnapshot(
         status: TransferStatus.completed,
-        bytesReceived: metadata.size,
-        totalBytes: metadata.size,
-        temporaryPath: temporaryPath,
+        bytesReceived: cached.size,
+        totalBytes: cached.size,
+        temporaryPath: cached.localPath,
       );
     } catch (error, stackTrace) {
       AppLogger.error('Audio download failed', error, stackTrace);
@@ -82,6 +103,7 @@ class TransferController extends ChangeNotifier {
   void dispose() {
     _progressSubscription.cancel();
     _transferService.dispose();
+    _cacheService.dispose();
     super.dispose();
   }
 
@@ -90,7 +112,11 @@ class TransferController extends ChangeNotifier {
       final file = File(path);
       if (await file.exists()) await file.parent.delete(recursive: true);
     } on FileSystemException catch (error, stackTrace) {
-      AppLogger.error('Failed to remove invalid audio temporary file', error, stackTrace);
+      AppLogger.error(
+        'Failed to remove invalid audio temporary file',
+        error,
+        stackTrace,
+      );
     }
   }
 }
