@@ -19,8 +19,10 @@ class ConnectionController extends ChangeNotifier {
   final WebSocketClient _client;
   DeviceConnectionState state = DeviceConnectionState.disconnected;
   final devices = <Device>[];
+  final messages = StreamController<WebSocketMessage>.broadcast();
   String? errorMessage;
   String? endpoint;
+  bool get isHost => _serverEvents != null;
   StreamSubscription<WebSocketMessage>? _serverEvents;
   StreamSubscription<WebSocketMessage>? _clientMessages;
 
@@ -79,16 +81,27 @@ class ConnectionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void send(String type, Map<String, dynamic> payload) {
+    final message = _message(type, payload);
+    if (isHost) {
+      _server.broadcast(message);
+    } else {
+      _client.send(message);
+    }
+  }
+
   @override
   void dispose() {
     _serverEvents?.cancel();
     _clientMessages?.cancel();
     _client.dispose();
     _server.dispose();
+    messages.close();
     super.dispose();
   }
 
   void _handleHostEvent(WebSocketMessage message) {
+    if (!messages.isClosed) messages.add(message);
     final deviceId = message.payload['deviceId'];
     final deviceName = message.payload['deviceName'];
     if (message.type != 'JOIN_ROOM' ||
@@ -109,14 +122,38 @@ class ConnectionController extends ChangeNotifier {
   }
 
   void _handleClientMessage(WebSocketMessage message) {
+    if (!messages.isClosed) messages.add(message);
     if (message.type == 'ROOM_STATE') {
       state = DeviceConnectionState.connected;
+      _updateDevices(message.payload['devices']);
     } else if (message.type == 'ERROR' || message.type == 'DISCONNECT') {
       state = DeviceConnectionState.error;
       errorMessage =
           message.payload['message'] as String? ?? 'Connection lost.';
     }
     notifyListeners();
+  }
+
+  void _updateDevices(Object? rawDevices) {
+    if (rawDevices is! List) return;
+    final next = <Device>[];
+    for (final rawDevice in rawDevices) {
+      if (rawDevice is! Map) continue;
+      final deviceId = rawDevice['deviceId'];
+      final deviceName = rawDevice['deviceName'];
+      if (deviceId is! String || deviceName is! String) continue;
+      next.add(
+        Device(
+          deviceId: deviceId,
+          deviceName: deviceName,
+          role: DeviceRole.client,
+          connectionState: DeviceConnectionState.connected,
+        ),
+      );
+    }
+    devices
+      ..clear()
+      ..addAll(next);
   }
 
   WebSocketMessage _message(String type, Map<String, dynamic> payload) {

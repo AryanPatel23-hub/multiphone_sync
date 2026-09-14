@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app/routes.dart';
 import '../../models/connection_state.dart';
 import '../../state/audio_server_controller.dart';
 import '../../state/connection_controller.dart';
 import '../../state/playback_controller.dart';
+import '../../state/playback_queue_controller.dart';
 import '../room/widgets/room_code_card.dart';
 import '../room/widgets/room_playback_controls.dart';
 
@@ -21,6 +23,7 @@ class _HostScreenState extends State<HostScreen> {
   late final ConnectionController _connection;
   late final AudioServerController _audioServer;
   late final PlaybackController _playback;
+  late final PlaybackQueueController _queue;
   late final TextEditingController _audioPathController;
 
   @override
@@ -28,7 +31,11 @@ class _HostScreenState extends State<HostScreen> {
     super.initState();
     _connection = ConnectionController()..addListener(_refresh);
     _audioServer = AudioServerController()..addListener(_refresh);
-    _playback = PlaybackController()..addListener(_refresh);
+    _playback = PlaybackController(
+      connection: _connection,
+      broadcastCommands: true,
+    )..addListener(_refresh);
+    _queue = PlaybackQueueController()..addListener(_refresh);
     _audioPathController = TextEditingController();
     _connection.startHost(widget.room);
   }
@@ -37,6 +44,9 @@ class _HostScreenState extends State<HostScreen> {
   void dispose() {
     _audioPathController.dispose();
     _playback
+      ..removeListener(_refresh)
+      ..dispose();
+    _queue
       ..removeListener(_refresh)
       ..dispose();
     _audioServer
@@ -57,7 +67,7 @@ class _HostScreenState extends State<HostScreen> {
         title: Text(widget.room.roomName),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: _showRoomQr,
             tooltip: 'Share room',
             icon: const Icon(Icons.ios_share_outlined),
           ),
@@ -160,8 +170,7 @@ class _HostScreenState extends State<HostScreen> {
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
-                    onPressed: () =>
-                        _playback.loadFile(_audioPathController.text),
+                    onPressed: _loadAudio,
                     icon: const Icon(Icons.file_open_outlined),
                     label: const Text('Load Audio'),
                   ),
@@ -194,6 +203,8 @@ class _HostScreenState extends State<HostScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          _buildQueue(context),
+          const SizedBox(height: 16),
           RoomPlaybackControls(enabled: true, controller: _playback),
         ],
       ),
@@ -207,5 +218,105 @@ class _HostScreenState extends State<HostScreen> {
   Future<void> _exposeAudio() async {
     final path = _audioPathController.text.trim();
     await _audioServer.exposeFile(path, duration: _playback.duration);
+    final metadata = _audioServer.metadata;
+    final endpoint = _audioServer.endpoint;
+    if (metadata != null && endpoint != null) {
+      _connection.send('AUDIO_INFO', {
+        'audioId': metadata.audioId,
+        'fileName': metadata.fileName,
+        'format': metadata.format,
+        'size': metadata.size,
+        'checksum': metadata.checksum,
+        'durationMs': metadata.duration?.inMilliseconds,
+        'url': endpoint,
+      });
+    }
+  }
+
+  Future<void> _loadAudio() async {
+    final path = _audioPathController.text.trim();
+    await _playback.loadFile(path);
+    if (_playback.filePath != null) _queue.add(_playback.filePath!);
+  }
+
+  Widget _buildQueue(BuildContext context) {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.queue_music_outlined),
+            title: const Text('Playback Queue'),
+            subtitle: Text('${_queue.items.length} track(s)'),
+            trailing: IconButton(
+              onPressed: _queue.currentIndex + 1 >= _queue.items.length
+                  ? null
+                  : _playNext,
+              tooltip: 'Play next track',
+              icon: const Icon(Icons.skip_next_outlined),
+            ),
+          ),
+          if (_queue.items.isEmpty)
+            const ListTile(
+              dense: true,
+              title: Text('Load local audio to add it to the queue.'),
+            )
+          else
+            ..._queue.items.asMap().entries.map(
+              (entry) => ListTile(
+                dense: true,
+                selected: entry.key == _queue.currentIndex,
+                leading: Text('${entry.key + 1}'),
+                title: Text(
+                  entry.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: IconButton(
+                  onPressed: () => _queue.removeAt(entry.key),
+                  tooltip: 'Remove track',
+                  icon: const Icon(Icons.close_outlined),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _playNext() async {
+    final next = _queue.next();
+    if (next == null) return;
+    await _playback.loadFile(next);
+    await _playback.play();
+  }
+
+  void _showRoomQr() {
+    final endpoint = _connection.endpoint;
+    final data = Uri(
+      scheme: 'multiphonesync',
+      host: 'join',
+      queryParameters: {
+        'roomCode': widget.room.roomCode,
+        'host': endpoint == null ? widget.room.hostAddress : Uri.parse(endpoint).host,
+        'port': widget.room.port.toString(),
+      },
+    ).toString();
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share Room'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(data: data, size: 220),
+            const SizedBox(height: 12),
+            Text(widget.room.roomCode, style: Theme.of(context).textTheme.headlineMedium),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
   }
 }

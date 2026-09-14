@@ -42,6 +42,7 @@ void main() {
       final client = WebSocketClient();
       final roomState = Completer<WebSocketMessage>();
       final joinEvent = Completer<WebSocketMessage>();
+      final command = Completer<WebSocketMessage>();
 
       final serverSubscription = server.events.stream.listen((message) {
         if (!joinEvent.isCompleted) joinEvent.complete(message);
@@ -49,6 +50,9 @@ void main() {
       final clientSubscription = client.messages.stream.listen((message) {
         if (message.type == 'ROOM_STATE' && !roomState.isCompleted) {
           roomState.complete(message);
+        }
+        if (message.type == 'PLAY' && !command.isCompleted) {
+          command.complete(message);
         }
       });
 
@@ -77,6 +81,12 @@ void main() {
 
       expect(receivedRoomState.type, 'ROOM_STATE');
       expect(receivedJoin.payload['roomCode'], '4827');
+
+      server.broadcast(_message('PLAY', {'positionMs': 0}));
+      expect(
+        (await command.future.timeout(const Duration(seconds: 2))).type,
+        'PLAY',
+      );
 
       await clientSubscription.cancel();
       await serverSubscription.cancel();

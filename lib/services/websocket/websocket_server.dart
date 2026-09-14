@@ -10,6 +10,7 @@ class WebSocketServer {
   final int port;
   HttpServer? _server;
   final _clients = <WebSocket>{};
+  final _clientInfo = <WebSocket, Map<String, String>>{};
   Timer? _heartbeatTimer;
   final events = StreamController<WebSocketMessage>.broadcast();
 
@@ -59,6 +60,7 @@ class WebSocketServer {
       await client.close(1000, 'Server stopped');
     }
     _clients.clear();
+    _clientInfo.clear();
     await _server?.close(force: true);
     _server = null;
   }
@@ -87,10 +89,29 @@ class WebSocketServer {
         return;
       }
 
+      if (message.type == 'CONNECT') {
+        final deviceId = message.payload['deviceId'];
+        final deviceName = message.payload['deviceName'];
+        if (deviceId is String && deviceName is String) {
+          _clientInfo[socket] = {
+            'deviceId': deviceId,
+            'deviceName': deviceName,
+          };
+        }
+      }
+
       if (message.type == 'JOIN_ROOM') {
         events.add(message);
       }
-      socket.add(_roomStateMessage().encode());
+      if (message.type == 'JOIN_ROOM') {
+        _broadcast(_roomStateMessage());
+      } else if (message.type != 'CONNECT') {
+        events.add(message);
+        _broadcast(message);
+      }
+      if (message.type == 'JOIN_ROOM') {
+        socket.add(_roomStateMessage().encode());
+      }
     } on FormatException catch (error) {
       socket.add(
         WebSocketMessage(
@@ -110,9 +131,15 @@ class WebSocketServer {
       type: 'ROOM_STATE',
       messageId: 'room-state',
       timestamp: DateTime.now().millisecondsSinceEpoch,
-      payload: {'status': 'OPEN', 'clientCount': _clients.length},
+      payload: {
+        'status': 'OPEN',
+        'clientCount': _clientInfo.length,
+        'devices': _clientInfo.values.toList(),
+      },
     );
   }
+
+  void broadcast(WebSocketMessage message) => _broadcast(message);
 
   void _broadcast(WebSocketMessage message) {
     for (final client in List<WebSocket>.from(_clients)) {
@@ -127,5 +154,7 @@ class WebSocketServer {
 
   void _remove(WebSocket socket) {
     _clients.remove(socket);
+    _clientInfo.remove(socket);
+    _broadcast(_roomStateMessage());
   }
 }

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/routes.dart';
 import '../../models/audio.dart';
 import '../../models/connection_state.dart';
+import '../../services/websocket/websocket_message.dart';
 import '../../state/connection_controller.dart';
+import '../../state/playback_controller.dart';
 import '../../state/transfer_controller.dart';
 import '../../models/transfer_state.dart';
 import '../room/widgets/room_code_card.dart';
@@ -21,6 +25,8 @@ class ClientScreen extends StatefulWidget {
 class _ClientScreenState extends State<ClientScreen> {
   late final ConnectionController _connection;
   late final TransferController _transfer;
+  late final PlaybackController _playback;
+  late final StreamSubscription<WebSocketMessage> _messageSubscription;
   late final TextEditingController _hostAddressController;
   late final TextEditingController _audioUrlController;
   late final TextEditingController _audioSizeController;
@@ -31,6 +37,11 @@ class _ClientScreenState extends State<ClientScreen> {
     super.initState();
     _connection = ConnectionController()..addListener(_refresh);
     _transfer = TransferController()..addListener(_refresh);
+    _playback = PlaybackController(connection: _connection)
+      ..addListener(_refresh);
+    _messageSubscription = _connection.messages.stream.listen(
+      _handleConnectionMessage,
+    );
     _hostAddressController = TextEditingController(
       text: widget.room.hostAddress,
     );
@@ -46,6 +57,10 @@ class _ClientScreenState extends State<ClientScreen> {
     _audioSizeController.dispose();
     _audioChecksumController.dispose();
     _transfer
+      ..removeListener(_refresh)
+      ..dispose();
+    _messageSubscription.cancel();
+    _playback
       ..removeListener(_refresh)
       ..dispose();
     _connection
@@ -238,7 +253,12 @@ class _ClientScreenState extends State<ClientScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const RoomPlaybackControls(enabled: false),
+          RoomPlaybackControls(
+            enabled:
+                isConnected &&
+                _transfer.snapshot.status == TransferStatus.completed,
+            controller: _playback,
+          ),
         ],
       ),
     );
@@ -270,6 +290,53 @@ class _ClientScreenState extends State<ClientScreen> {
         checksum: _audioChecksumController.text.trim(),
       ),
     );
+    final localPath = _transfer.snapshot.temporaryPath;
+    if (_transfer.snapshot.status == TransferStatus.completed &&
+        localPath != null) {
+      await _playback.loadFile(localPath);
+      _connection.send('SYNC_REQUEST', {});
+    }
+  }
+
+  Future<void> _handleConnectionMessage(WebSocketMessage message) async {
+    if (message.type != 'AUDIO_INFO') return;
+    final payload = message.payload;
+    final url = payload['url'];
+    final audioId = payload['audioId'];
+    final fileName = payload['fileName'];
+    final format = payload['format'];
+    final size = payload['size'];
+    final checksum = payload['checksum'];
+    if (url is! String ||
+        audioId is! String ||
+        fileName is! String ||
+        format is! String ||
+        size is! int ||
+        checksum is! String) {
+      return;
+    }
+    _audioUrlController.text = url;
+    _audioSizeController.text = size.toString();
+    _audioChecksumController.text = checksum;
+    await _transfer.download(
+      Uri.parse(url),
+      AudioMetadata(
+        audioId: audioId,
+        fileName: fileName,
+        format: format,
+        size: size,
+        checksum: checksum,
+        duration: payload['durationMs'] is int
+            ? Duration(milliseconds: payload['durationMs'] as int)
+            : null,
+      ),
+    );
+    final localPath = _transfer.snapshot.temporaryPath;
+    if (_transfer.snapshot.status == TransferStatus.completed &&
+        localPath != null) {
+      await _playback.loadFile(localPath);
+      _connection.send('SYNC_REQUEST', {});
+    }
   }
 
   void _refresh() {
