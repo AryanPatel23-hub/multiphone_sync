@@ -297,7 +297,9 @@ class _HostScreenState extends State<HostScreen> {
       host: 'join',
       queryParameters: {
         'roomCode': widget.room.roomCode,
-        'host': endpoint == null ? widget.room.hostAddress : Uri.parse(endpoint).host,
+        'host': endpoint == null
+            ? widget.room.hostAddress
+            : Uri.parse(endpoint).host,
         'port': widget.room.port.toString(),
       },
     ).toString();
@@ -310,11 +312,17 @@ class _HostScreenState extends State<HostScreen> {
           children: [
             QrImageView(data: data, size: 220),
             const SizedBox(height: 12),
-            Text(widget.room.roomCode, style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              widget.room.roomCode,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
