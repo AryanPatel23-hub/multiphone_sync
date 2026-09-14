@@ -9,7 +9,10 @@ import '../transfer/checksum_service.dart';
 
 abstract interface class AudioCacheService {
   Future<AudioMetadata?> findValid(String audioId);
-  Future<AudioMetadata> storeVerified(File verifiedFile, AudioMetadata metadata);
+  Future<AudioMetadata> storeVerified(
+    File verifiedFile,
+    AudioMetadata metadata,
+  );
   Future<void> invalidate(String audioId);
   Future<void> dispose();
 }
@@ -73,10 +76,9 @@ class LocalAudioCacheService implements AudioCacheService {
     await verifiedFile.copy(cachePart.path);
     if (await cacheFile.exists()) await cacheFile.delete();
     await cachePart.rename(cacheFile.path);
-    await File(_metadataPath(root, metadata.audioId)).writeAsString(
-      jsonEncode(cachedMetadata.toJson()),
-      flush: true,
-    );
+    await File(
+      _metadataPath(root, metadata.audioId),
+    ).writeAsString(jsonEncode(cachedMetadata.toJson()), flush: true);
     return cachedMetadata;
   }
 
@@ -110,5 +112,6 @@ class LocalAudioCacheService implements AudioCacheService {
   String _metadataPath(Directory root, String audioId) =>
       '${root.path}${Platform.pathSeparator}${_safeId(audioId)}.json';
 
-  String _safeId(String value) => value.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+  String _safeId(String value) =>
+      value.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
 }

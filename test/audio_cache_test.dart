@@ -6,28 +6,31 @@ import 'package:multi_phone_sync/models/audio.dart';
 import 'package:multi_phone_sync/services/cache/audio_cache_service.dart';
 
 void main() {
-  test('stores verified audio and reuses it after service recreation', () async {
-    final root = await Directory.systemTemp.createTemp('audio_cache_test');
-    final source = File('${root.path}${Platform.pathSeparator}source.mp3');
-    final bytes = List<int>.generate(64, (index) => index);
-    await source.writeAsBytes(bytes);
-    final metadata = _metadata(bytes);
+  test(
+    'stores verified audio and reuses it after service recreation',
+    () async {
+      final root = await Directory.systemTemp.createTemp('audio_cache_test');
+      final source = File('${root.path}${Platform.pathSeparator}source.mp3');
+      final bytes = List<int>.generate(64, (index) => index);
+      await source.writeAsBytes(bytes);
+      final metadata = _metadata(bytes);
 
-    try {
-      final first = LocalAudioCacheService(root: root);
-      final cached = await first.storeVerified(source, metadata);
-      expect(await File(cached.localPath).exists(), isTrue);
-      await first.dispose();
+      try {
+        final first = LocalAudioCacheService(root: root);
+        final cached = await first.storeVerified(source, metadata);
+        expect(await File(cached.localPath).exists(), isTrue);
+        await first.dispose();
 
-      final second = LocalAudioCacheService(root: root);
-      final reused = await second.findValid(metadata.audioId);
-      expect(reused?.localPath, cached.localPath);
-      expect(await File(reused!.localPath).readAsBytes(), bytes);
-      await second.dispose();
-    } finally {
-      if (await root.exists()) await root.delete(recursive: true);
-    }
-  });
+        final second = LocalAudioCacheService(root: root);
+        final reused = await second.findValid(metadata.audioId);
+        expect(reused?.localPath, cached.localPath);
+        expect(await File(reused!.localPath).readAsBytes(), bytes);
+        await second.dispose();
+      } finally {
+        if (await root.exists()) await root.delete(recursive: true);
+      }
+    },
+  );
 
   test('rejects unverified audio and never stores it', () async {
     final root = await Directory.systemTemp.createTemp('audio_cache_test');
@@ -48,10 +51,9 @@ void main() {
         throwsA(isA<FormatException>()),
       );
       expect(
-        await Directory(root.path)
-            .list()
-            .where((entity) => entity.path.endsWith('.json'))
-            .toList(),
+        await Directory(
+          root.path,
+        ).list().where((entity) => entity.path.endsWith('.json')).toList(),
         isEmpty,
       );
       await cache.dispose();
